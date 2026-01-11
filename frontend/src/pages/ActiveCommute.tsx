@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { MapContainer, TileLayer, Polyline, Marker, Popup } from 'react-leaflet'
-import { AlertTriangle, CheckCircle, Clock, ArrowRight, X } from 'lucide-react'
+import { MapContainer, TileLayer, Polyline, Marker, Popup, Circle, useMap } from 'react-leaflet'
+import { AlertTriangle, CheckCircle, Clock, Navigation, Volume2, VolumeX } from 'lucide-react'
 import { api } from '../lib/api'
 import { RouteComparison, RouteOption } from '../types'
+import { useGeolocation, Position, isNearPoint, calculateDistance } from '../hooks/useGeolocation'
+import { useNotifications, sendRouteAlert, sendArrivalAlert } from '../hooks/useNotifications'
 import clsx from 'clsx'
 import L from 'leaflet'
 
@@ -25,17 +27,52 @@ const TRAFFIC_COLORS: Record<string, string> = {
   unknown: '#6b7280',
 }
 
+// Component to follow user position on map
+function FollowUser({ position }: { position: Position | null }) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (position) {
+      map.setView([position.lat, position.lng], map.getZoom())
+    }
+  }, [position, map])
+
+  return null
+}
+
 export function ActiveCommute() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [historyId, setHistoryId] = useState<string | null>(null)
   const [selectedRoute, setSelectedRoute] = useState<string | null>(null)
+  const [followUser, setFollowUser] = useState(true)
+  const [audioEnabled, setAudioEnabled] = useState(true)
+  const [startTime, setStartTime] = useState<Date | null>(null)
+  const lastAlertRef = useRef<string | null>(null)
+
+  // GPS tracking
+  const { position, error: geoError, isTracking, startTracking, stopTracking } = useGeolocation({
+    enableHighAccuracy: true,
+    onPositionChange: (pos) => {
+      // Check if arrived at destination
+      if (routeData?.current_route && destinationCoords) {
+        if (isNearPoint(pos, destinationCoords, 0.1)) {
+          handleArrival()
+        }
+      }
+    },
+  })
+
+  // Notifications
+  const { permission, requestPermission, sendNotification } = useNotifications()
 
   // Start commute tracking
   const startMutation = useMutation({
     mutationFn: () => api.startCommute(id!),
     onSuccess: (data) => {
       setHistoryId(data.history_id)
+      setStartTime(new Date())
+      startTracking()
     },
   })
 
@@ -43,24 +80,71 @@ export function ActiveCommute() {
   const endMutation = useMutation({
     mutationFn: () => api.endCommute(id!, historyId!, selectedRoute),
     onSuccess: () => {
+      stopTracking()
       navigate('/')
     },
   })
 
   // Get route comparison (polls every 30s)
   const { data: routeData, isLoading } = useQuery({
-    queryKey: ['routes', id],
+    queryKey: ['routes', id, position?.lat, position?.lng],
     queryFn: () => api.calculateRoutes(id!),
     enabled: !!historyId,
     refetchInterval: 30000, // Poll every 30 seconds
   })
 
-  // Auto-start on mount
+  // Request notification permission and auto-start on mount
   useEffect(() => {
+    if (permission === 'default') {
+      requestPermission()
+    }
     if (!historyId) {
       startMutation.mutate()
     }
   }, [id])
+
+  // Check for route recommendations and alert user
+  useEffect(() => {
+    if (routeData?.recommended_switch && routeData.recommended_switch !== lastAlertRef.current) {
+      lastAlertRef.current = routeData.recommended_switch
+      const alt = routeData.alternatives.find(a => a.id === routeData.recommended_switch)
+      if (alt) {
+        // Send notification
+        sendRouteAlert(sendNotification, alt.name, alt.savings_vs_current)
+
+        // Speak alert if audio enabled
+        if (audioEnabled && 'speechSynthesis' in window) {
+          const msg = new SpeechSynthesisUtterance(
+            `Switch to ${alt.name} to save ${Math.round(alt.savings_vs_current)} minutes`
+          )
+          speechSynthesis.speak(msg)
+        }
+      }
+    }
+  }, [routeData?.recommended_switch, audioEnabled, sendNotification])
+
+  // Extract destination coordinates
+  const destinationCoords = routeData?.current_route?.geometry?.length
+    ? routeData.current_route.geometry[routeData.current_route.geometry.length - 1]
+    : null
+
+  const handleArrival = () => {
+    if (startTime) {
+      const duration = (new Date().getTime() - startTime.getTime()) / 60000
+      sendArrivalAlert(sendNotification, duration)
+    }
+    endMutation.mutate()
+  }
+
+  // Calculate elapsed time
+  const elapsedMinutes = startTime
+    ? Math.floor((new Date().getTime() - startTime.getTime()) / 60000)
+    : 0
+
+  // Calculate remaining distance
+  const remainingDistance = position && destinationCoords
+    ? calculateDistance(position, destinationCoords)
+    : null
 
   if (isLoading || !routeData) {
     return (
@@ -68,6 +152,7 @@ export function ActiveCommute() {
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-gray-400">Calculating routes...</p>
+          {geoError && <p className="text-red-400 mt-2">{geoError}</p>}
         </div>
       </div>
     )
@@ -86,9 +171,56 @@ export function ActiveCommute() {
 
   return (
     <div className="space-y-4">
+      {/* Live Status Bar */}
+      <div className="bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className={clsx(
+              "w-3 h-3 rounded-full",
+              isTracking ? "bg-green-500 animate-pulse" : "bg-gray-500"
+            )} />
+            <span className="text-sm text-gray-400">
+              {isTracking ? "Tracking" : "Not tracking"}
+            </span>
+          </div>
+          <div className="text-sm">
+            <span className="text-gray-400">Elapsed: </span>
+            <span className="font-mono">{elapsedMinutes} min</span>
+          </div>
+          {remainingDistance !== null && (
+            <div className="text-sm">
+              <span className="text-gray-400">Remaining: </span>
+              <span className="font-mono">{remainingDistance.toFixed(1)} km</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFollowUser(!followUser)}
+            className={clsx(
+              "p-2 rounded-lg transition-colors",
+              followUser ? "bg-blue-600" : "bg-gray-700"
+            )}
+            title={followUser ? "Following your position" : "Free map movement"}
+          >
+            <Navigation className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setAudioEnabled(!audioEnabled)}
+            className={clsx(
+              "p-2 rounded-lg transition-colors",
+              audioEnabled ? "bg-blue-600" : "bg-gray-700"
+            )}
+            title={audioEnabled ? "Voice alerts on" : "Voice alerts off"}
+          >
+            {audioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
+
       {/* Recommendation Alert */}
       {recommended_switch && (
-        <div className="bg-yellow-900/50 border border-yellow-600 rounded-lg p-4 flex items-start gap-3">
+        <div className="bg-yellow-900/50 border border-yellow-600 rounded-lg p-4 flex items-start gap-3 animate-pulse">
           <AlertTriangle className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h3 className="font-semibold text-yellow-400">Route Change Recommended</h3>
@@ -117,6 +249,8 @@ export function ActiveCommute() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
+            {followUser && <FollowUser position={position} />}
+
             {/* Current route */}
             <Polyline
               positions={current_route.geometry.map(p => [p.lat, p.lng])}
@@ -137,21 +271,26 @@ export function ActiveCommute() {
               />
             ))}
 
-            {/* Origin marker */}
-            {current_route.geometry[0] && (
-              <Marker position={[current_route.geometry[0].lat, current_route.geometry[0].lng]}>
-                <Popup>Start</Popup>
-              </Marker>
+            {/* User position */}
+            {position && (
+              <>
+                <Circle
+                  center={[position.lat, position.lng]}
+                  radius={position.accuracy}
+                  pathOptions={{ color: '#3b82f6', fillOpacity: 0.1 }}
+                />
+                <Marker position={[position.lat, position.lng]}>
+                  <Popup>
+                    You are here
+                    {position.speed && <><br />Speed: {Math.round(position.speed * 3.6)} km/h</>}
+                  </Popup>
+                </Marker>
+              </>
             )}
 
             {/* Destination marker */}
-            {current_route.geometry.length > 0 && (
-              <Marker
-                position={[
-                  current_route.geometry[current_route.geometry.length - 1].lat,
-                  current_route.geometry[current_route.geometry.length - 1].lng,
-                ]}
-              >
+            {destinationCoords && (
+              <Marker position={[destinationCoords.lat, destinationCoords.lng]}>
                 <Popup>Destination</Popup>
               </Marker>
             )}
@@ -213,7 +352,7 @@ function RouteCard({ route, isCurrent, isSelected, isRecommended, onSelect }: Ro
         isSelected
           ? 'bg-blue-900/50 border-blue-500'
           : 'bg-gray-800 border-gray-700 hover:border-gray-600',
-        isRecommended && !isSelected && 'border-yellow-600'
+        isRecommended && !isSelected && 'border-yellow-600 animate-pulse'
       )}
     >
       <div className="flex items-start justify-between mb-2">
@@ -244,7 +383,7 @@ function RouteCard({ route, isCurrent, isSelected, isRecommended, onSelect }: Ro
       </div>
 
       {route.savings_vs_current > 0 && (
-        <div className="mt-2 text-sm text-green-400">
+        <div className="mt-2 text-sm text-green-400 font-medium">
           Saves {Math.round(route.savings_vs_current)} min
         </div>
       )}
