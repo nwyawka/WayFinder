@@ -49,18 +49,11 @@ export function ActiveCommute() {
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [startTime, setStartTime] = useState<Date | null>(null)
   const lastAlertRef = useRef<string | null>(null)
+  const hasArrivedRef = useRef(false)
 
   // GPS tracking
   const { position, error: geoError, isTracking, startTracking, stopTracking } = useGeolocation({
     enableHighAccuracy: true,
-    onPositionChange: (pos) => {
-      // Check if arrived at destination
-      if (routeData?.current_route && destinationCoords) {
-        if (isNearPoint(pos, destinationCoords, 0.1)) {
-          handleArrival()
-        }
-      }
-    },
   })
 
   // Notifications
@@ -129,12 +122,33 @@ export function ActiveCommute() {
     : null
 
   const handleArrival = () => {
+    if (hasArrivedRef.current) return // Prevent multiple triggers
+    hasArrivedRef.current = true
+
     if (startTime) {
       const duration = (new Date().getTime() - startTime.getTime()) / 60000
       sendArrivalAlert(sendNotification, duration)
+
+      // Voice announcement
+      if (audioEnabled && 'speechSynthesis' in window) {
+        const msg = new SpeechSynthesisUtterance(
+          `You have arrived. Commute completed in ${Math.round(duration)} minutes.`
+        )
+        speechSynthesis.speak(msg)
+      }
     }
     endMutation.mutate()
   }
+
+  // Auto-end commute when within 100 meters of destination
+  useEffect(() => {
+    if (position && destinationCoords && !hasArrivedRef.current) {
+      const distance = calculateDistance(position, destinationCoords)
+      if (distance <= 0.1) { // 100 meters
+        handleArrival()
+      }
+    }
+  }, [position, destinationCoords])
 
   // Calculate elapsed time
   const elapsedMinutes = startTime
