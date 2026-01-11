@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Polyline, Marker, Popup, Circle, useMap } from
 import { AlertTriangle, CheckCircle, Clock, Navigation, Volume2, VolumeX } from 'lucide-react'
 import { api } from '../lib/api'
 import { RouteOption, Coordinate } from '../types'
-import { useGeolocation, Position, isNearPoint, calculateDistance } from '../hooks/useGeolocation'
+import { useGeolocation, calculateDistance } from '../hooks/useGeolocation'
 import { useNotifications, sendRouteAlert, sendArrivalAlert } from '../hooks/useNotifications'
 import clsx from 'clsx'
 import L from 'leaflet'
