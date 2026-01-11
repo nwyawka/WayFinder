@@ -5,6 +5,7 @@ Uses HERE or TomTom as primary, falls back to OSRM for free tier.
 import httpx
 from typing import Optional
 import polyline
+import flexpolyline
 
 from app.config import get_settings
 
@@ -179,14 +180,17 @@ class RoutingService:
     def _decode_here_polyline(self, encoded: str) -> list[dict]:
         """Decode HERE's flexible polyline format."""
         try:
-            # HERE uses a slightly different polyline encoding
-            # For simplicity, try standard polyline first
-            decoded = polyline.decode(encoded)
-            return [{"lat": lat, "lng": lng} for lat, lng in decoded]
+            # HERE uses flexible polyline encoding
+            decoded = flexpolyline.decode(encoded)
+            # Returns list of (lat, lng) or (lat, lng, altitude) tuples
+            return [{"lat": point[0], "lng": point[1]} for point in decoded]
         except Exception:
-            # HERE's format may need the flexpolyline library
-            # For now, return empty and log
-            return []
+            # Fallback to standard polyline
+            try:
+                decoded = polyline.decode(encoded)
+                return [{"lat": lat, "lng": lng} for lat, lng in decoded]
+            except Exception:
+                return []
 
     def _generate_route_name(self, index: int) -> str:
         """Generate a human-readable route name."""
