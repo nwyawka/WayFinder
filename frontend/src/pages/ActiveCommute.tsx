@@ -96,6 +96,13 @@ export function ActiveCommute() {
     }
   }, [id])
 
+  // Initialize selected route when data loads
+  useEffect(() => {
+    if (routeData?.current_route && !selectedRoute) {
+      setSelectedRoute(routeData.current_route.id)
+    }
+  }, [routeData, selectedRoute])
+
   // Check for route recommendations and alert user
   useEffect(() => {
     if (routeData?.recommended_switch && routeData.recommended_switch !== lastAlertRef.current) {
@@ -265,25 +272,33 @@ export function ActiveCommute() {
 
             {followUser && <FollowUser position={position} />}
 
-            {/* Current route */}
-            <Polyline
-              positions={current_route.geometry.map((p: Coordinate) => [p.lat, p.lng] as [number, number])}
-              color={TRAFFIC_COLORS[current_route.traffic_level]}
-              weight={6}
-              opacity={selectedRoute === current_route.id ? 1 : 0.7}
-            />
+            {/* All routes - render non-selected first, then selected on top */}
+            {/* Non-selected routes (dimmed) */}
+            {[current_route, ...alternatives]
+              .filter((route: RouteOption) => route.id !== selectedRoute)
+              .map((route: RouteOption) => (
+                <Polyline
+                  key={route.id}
+                  positions={route.geometry.map((p: Coordinate) => [p.lat, p.lng] as [number, number])}
+                  color={TRAFFIC_COLORS[route.traffic_level]}
+                  weight={4}
+                  opacity={0.5}
+                  dashArray="8, 8"
+                />
+              ))}
 
-            {/* Alternative routes */}
-            {alternatives.map((route: RouteOption) => (
-              <Polyline
-                key={route.id}
-                positions={route.geometry.map((p: Coordinate) => [p.lat, p.lng] as [number, number])}
-                color={TRAFFIC_COLORS[route.traffic_level]}
-                weight={4}
-                opacity={selectedRoute === route.id ? 1 : 0.4}
-                dashArray={selectedRoute === route.id ? undefined : '10, 10'}
-              />
-            ))}
+            {/* Selected route (prominent, on top) */}
+            {(() => {
+              const selected = [current_route, ...alternatives].find((r: RouteOption) => r.id === selectedRoute) || current_route
+              return (
+                <Polyline
+                  positions={selected.geometry.map((p: Coordinate) => [p.lat, p.lng] as [number, number])}
+                  color={TRAFFIC_COLORS[selected.traffic_level]}
+                  weight={7}
+                  opacity={1}
+                />
+              )
+            })()}
 
             {/* User position */}
             {position && (

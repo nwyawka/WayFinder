@@ -132,3 +132,45 @@ async def get_commute_patterns(commute_id: str):
     patterns = analyze_commute_patterns(history)
 
     return patterns
+
+
+@router.get("/{commute_id}/incidents")
+async def get_commute_incidents(commute_id: str):
+    """
+    Get traffic incidents along the commute route corridor.
+    Returns accidents, congestion, construction, road closures, etc.
+    """
+    commute = await storage.get_commute(commute_id)
+    if not commute:
+        raise HTTPException(status_code=404, detail="Commute not found")
+
+    from app.services.routing import RoutingService
+    routing = RoutingService()
+
+    incidents = await routing.get_incidents(
+        origin=(commute.origin_lat, commute.origin_lng),
+        destination=(commute.dest_lat, commute.dest_lng),
+    )
+
+    return incidents
+
+
+@router.get("/{commute_id}/weather")
+async def get_commute_weather(commute_id: str):
+    """
+    Get weather conditions along the commute route.
+    Returns current weather at origin and destination with driving impact assessment.
+    """
+    commute = await storage.get_commute(commute_id)
+    if not commute:
+        raise HTTPException(status_code=404, detail="Commute not found")
+
+    from app.services.weather import WeatherService
+    weather_service = WeatherService()
+
+    weather = await weather_service.get_route_weather(
+        origin=(commute.origin_lat, commute.origin_lng),
+        destination=(commute.dest_lat, commute.dest_lng),
+    )
+
+    return weather

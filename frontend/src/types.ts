@@ -20,6 +20,17 @@ export interface Coordinate {
   lng: number
 }
 
+export interface TurnInstruction {
+  type: 'depart' | 'arrive' | 'turn' | 'continue' | 'merge' | 'ramp' | 'fork' | 'roundabout' | 'notification' | 'unknown'
+  instruction: string
+  distance_m: number
+  duration_s: number
+  lat: number
+  lng: number
+  maneuver?: 'left' | 'right' | 'straight' | 'slight_left' | 'slight_right' | 'sharp_left' | 'sharp_right' | 'u_turn' | 'exit'
+  road_name?: string
+}
+
 export interface RouteOption {
   id: string
   name: string
@@ -30,6 +41,20 @@ export interface RouteOption {
   geometry: Coordinate[]
   savings_vs_current: number
   confidence: number
+  instructions?: TurnInstruction[]
+}
+
+export interface TrafficIncident {
+  id: string
+  type: 'accident' | 'congestion' | 'construction' | 'road_closed' | 'weather' | 'other'
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  lat: number
+  lng: number
+  description: string
+  delay_seconds?: number
+  start_time?: string
+  end_time?: string
+  source: 'tomtom' | 'here' | 'user'
 }
 
 export interface RouteComparison {
@@ -90,4 +115,29 @@ export interface CommuteCreate {
 export interface StartCommuteResponse {
   history_id: string
   routes: RouteComparison
+}
+
+export interface WeatherCondition {
+  condition: string
+  condition_id: number
+  description: string
+  icon: string
+  icon_url: string
+  temperature_c: number
+  feels_like_c: number
+  humidity: number
+  visibility_m: number
+  wind_speed_ms: number
+  wind_gust_ms?: number
+  rain_1h_mm: number
+  snow_1h_mm: number
+  driving_impact: 'none' | 'low' | 'moderate' | 'high' | 'severe'
+  driving_warning?: string
+}
+
+export interface RouteWeather {
+  origin: WeatherCondition
+  destination: WeatherCondition
+  route_impact: 'none' | 'low' | 'moderate' | 'high' | 'severe'
+  warnings: string[]
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Plus, Play, Trash2, TrendingUp, Clock } from 'lucide-react'
+import { Plus, Play, Trash2, TrendingUp, Clock, Navigation2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { AddCommuteModal } from '../components/AddCommuteModal'
 import { Commute } from '../types'
@@ -136,17 +136,24 @@ function CommuteCard({ commute, onDelete }: CommuteCardProps) {
       {/* Actions */}
       <div className="flex gap-2">
         <Link
-          to={`/commute/${commute.id}`}
+          to={`/navigate/${commute.id}`}
           className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg transition-colors"
         >
+          <Navigation2 className="w-4 h-4" />
+          Navigate
+        </Link>
+        <Link
+          to={`/commute/${commute.id}`}
+          className="flex-1 flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg transition-colors"
+        >
           <Play className="w-4 h-4" />
-          Start
+          Preview
         </Link>
         <Link
           to={`/history/${commute.id}`}
-          className="flex-1 flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 py-2 rounded-lg transition-colors"
+          className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 px-3 py-2 rounded-lg transition-colors"
         >
-          History
+          <Clock className="w-4 h-4" />
         </Link>
       </div>
     </div>

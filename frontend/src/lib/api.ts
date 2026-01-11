@@ -8,6 +8,8 @@ import {
   CommuteHistory,
   CommutePatterns,
   StartCommuteResponse,
+  TrafficIncident,
+  RouteWeather,
 } from '../types'
 
 const BASE_URL = '/api'
@@ -66,4 +68,12 @@ export const api = {
   calculateRoutes: (commuteId: string) =>
     fetchJSON<StartCommuteResponse>(`/commutes/${commuteId}/start`, { method: 'POST' })
       .then((data) => data.routes),
+
+  // Incidents
+  getIncidents: (commuteId: string) =>
+    fetchJSON<TrafficIncident[]>(`/commutes/${commuteId}/incidents`),
+
+  // Weather
+  getWeather: (commuteId: string) =>
+    fetchJSON<RouteWeather>(`/commutes/${commuteId}/weather`),
 }
