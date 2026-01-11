@@ -38,7 +38,6 @@ export function useNotifications(): UseNotificationsReturn {
     const defaultOptions: NotificationOptions = {
       icon: '/wayfinder-icon.png',
       badge: '/wayfinder-badge.png',
-      vibrate: [200, 100, 200],
       requireInteraction: true,
       ...options,
     }

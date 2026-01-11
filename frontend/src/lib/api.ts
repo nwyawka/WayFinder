@@ -5,9 +5,8 @@
 import {
   Commute,
   CommuteCreate,
-  CommuteHistoryEntry,
+  CommuteHistory,
   CommutePatterns,
-  RouteComparison,
   StartCommuteResponse,
 } from '../types'
 
@@ -51,14 +50,14 @@ export const api = {
     }),
 
   endCommute: (commuteId: string, historyId: string, routeTaken?: string | null) =>
-    fetchJSON<CommuteHistoryEntry>(`/commutes/${commuteId}/history/${historyId}/end`, {
+    fetchJSON<CommuteHistory>(`/commutes/${commuteId}/history/${historyId}/end`, {
       method: 'POST',
       body: JSON.stringify({ route_taken: routeTaken }),
     }),
 
   // History and patterns
   getHistory: (commuteId: string) =>
-    fetchJSON<CommuteHistoryEntry[]>(`/commutes/${commuteId}/history`),
+    fetchJSON<CommuteHistory[]>(`/commutes/${commuteId}/history`),
 
   getPatterns: (commuteId: string) =>
     fetchJSON<CommutePatterns>(`/commutes/${commuteId}/patterns`),

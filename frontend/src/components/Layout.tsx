@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Clock, Settings as SettingsIcon, Navigation } from 'lucide-react'
+import { Home, Settings as SettingsIcon, Navigation } from 'lucide-react'
 import clsx from 'clsx'
 
 interface LayoutProps {

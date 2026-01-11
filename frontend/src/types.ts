@@ -75,3 +75,19 @@ export interface CommutePatterns {
   }
   recommendations?: string[]
 }
+
+export interface CommuteCreate {
+  name: string
+  origin_lat: number
+  origin_lng: number
+  origin_address?: string
+  dest_lat: number
+  dest_lng: number
+  dest_address?: string
+  typical_departure_time?: string
+}
+
+export interface StartCommuteResponse {
+  history_id: string
+  routes: RouteComparison
+}

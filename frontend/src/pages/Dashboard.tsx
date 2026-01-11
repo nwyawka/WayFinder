@@ -5,7 +5,6 @@ import { Plus, Play, Trash2, TrendingUp, Clock } from 'lucide-react'
 import { api } from '../lib/api'
 import { AddCommuteModal } from '../components/AddCommuteModal'
 import { Commute } from '../types'
-import clsx from 'clsx'
 
 export function Dashboard() {
   const [showAddModal, setShowAddModal] = useState(false)

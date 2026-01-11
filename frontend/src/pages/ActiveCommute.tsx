@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { MapContainer, TileLayer, Polyline, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import { AlertTriangle, CheckCircle, Clock, Navigation, Volume2, VolumeX } from 'lucide-react'
 import { api } from '../lib/api'
-import { RouteComparison, RouteOption } from '../types'
+import { RouteOption, Coordinate } from '../types'
 import { useGeolocation, Position, isNearPoint, calculateDistance } from '../hooks/useGeolocation'
 import { useNotifications, sendRouteAlert, sendArrivalAlert } from '../hooks/useNotifications'
 import clsx from 'clsx'
@@ -107,7 +107,7 @@ export function ActiveCommute() {
   useEffect(() => {
     if (routeData?.recommended_switch && routeData.recommended_switch !== lastAlertRef.current) {
       lastAlertRef.current = routeData.recommended_switch
-      const alt = routeData.alternatives.find(a => a.id === routeData.recommended_switch)
+      const alt = routeData.alternatives.find((a: RouteOption) => a.id === routeData.recommended_switch)
       if (alt) {
         // Send notification
         sendRouteAlert(sendNotification, alt.name, alt.savings_vs_current)
@@ -161,12 +161,12 @@ export function ActiveCommute() {
   const { current_route, alternatives, recommended_switch, recommendation_reason } = routeData
 
   // Calculate map bounds
-  const allPoints = [
+  const allPoints: Coordinate[] = [
     ...current_route.geometry,
-    ...alternatives.flatMap(a => a.geometry),
+    ...alternatives.flatMap((a: RouteOption) => a.geometry),
   ]
   const bounds = allPoints.length > 0
-    ? L.latLngBounds(allPoints.map(p => [p.lat, p.lng]))
+    ? L.latLngBounds(allPoints.map((p: Coordinate) => [p.lat, p.lng] as [number, number]))
     : undefined
 
   return (
@@ -253,17 +253,17 @@ export function ActiveCommute() {
 
             {/* Current route */}
             <Polyline
-              positions={current_route.geometry.map(p => [p.lat, p.lng])}
+              positions={current_route.geometry.map((p: Coordinate) => [p.lat, p.lng] as [number, number])}
               color={TRAFFIC_COLORS[current_route.traffic_level]}
               weight={6}
               opacity={selectedRoute === current_route.id ? 1 : 0.7}
             />
 
             {/* Alternative routes */}
-            {alternatives.map((route) => (
+            {alternatives.map((route: RouteOption) => (
               <Polyline
                 key={route.id}
-                positions={route.geometry.map(p => [p.lat, p.lng])}
+                positions={route.geometry.map((p: Coordinate) => [p.lat, p.lng] as [number, number])}
                 color={TRAFFIC_COLORS[route.traffic_level]}
                 weight={4}
                 opacity={selectedRoute === route.id ? 1 : 0.4}
@@ -310,7 +310,7 @@ export function ActiveCommute() {
           />
 
           {/* Alternatives */}
-          {alternatives.map((route) => (
+          {alternatives.map((route: RouteOption) => (
             <RouteCard
               key={route.id}
               route={route}
