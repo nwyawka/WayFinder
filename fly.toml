@@ -1,0 +1,26 @@
+# fly.toml app configuration file generated for wayfinder-commute on 2026-01-10T21:47:28-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'wayfinder-commute'
+primary_region = 'iad'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  OSRM_SERVER = 'https://router.project-osrm.org'
+  PORT = '8000'
+
+[http_service]
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = '512mb'
+  cpus = 1
+  memory_mb = 512

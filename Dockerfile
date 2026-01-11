@@ -28,8 +28,9 @@ COPY backend/app ./app
 # Copy frontend build
 COPY --from=frontend-build /app/frontend/dist /var/www/html
 
-# Copy nginx config
+# Copy nginx config and ensure it's enabled
 COPY deploy/nginx.conf /etc/nginx/sites-available/default
+RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
 # Copy startup script
 COPY deploy/start.sh /start.sh

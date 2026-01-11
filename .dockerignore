@@ -1,0 +1,39 @@
+# flyctl launch added from .gitignore
+# Dependencies
+**/node_modules
+**/venv
+**/__pycache__
+**/*.py[cod]
+**/*$py.class
+**/.Python
+
+# Build outputs
+**/dist
+**/build
+**/*.egg-info
+
+# Environment
+**/.env
+**/.env.local
+**/.env.*.local
+
+# Data and models
+**/backend/data
+**/backend/app/ml/trained_model.joblib
+
+# IDE
+**/.idea
+**/.vscode
+**/*.swp
+**/*.swo
+**/.DS_Store
+
+# Logs
+**/*.log
+**/npm-debug.log*
+
+# Testing
+**/.coverage
+**/htmlcov
+**/.pytest_cache
+fly.toml
